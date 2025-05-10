@@ -1,15 +1,16 @@
 {
-    "autosave": true,
-    "cpu": true,
-    "opencl": false,
-    "cuda": false,
-    "pools": [
-      {
-        "url": "pool.minexmr.com:443",
-        "user": "481mKdXDxV1idj6HTamaf4Zc81LQzFhKwj8SueT87M6EBzEddUFHjNQcyKLjHoPJtwK9SRrPU8EZz1sGUXGSeY2tMcTPtaz",
-        "pass": "x",
-        "tls": true
-      }
-    ]
-  }
-  
+  "autosave": true,
+  "cpu": {
+    "enabled": true
+  },
+  "opencl": false,
+  "cuda": false,
+  "pools": [
+    {
+      "url": "pool.supportxmr.com:443",
+      "user": "481mKdXDxV1idj6HTamaf4Zc81LQzFhKwj8SueT87M6EBzEddUFHjNQcyKLjHoPJtwK9SRrPU8EZz1sGUXGSeY2tMcTPtaz",
+      "pass": "x",
+      "tls": true
+    }
+  ]
+}
