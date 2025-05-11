@@ -8,7 +8,7 @@
   "pools": [
     {
       "url": "pool.supportxmr.com:443",
-      "user": "481mKdXDxV1idj6HTamaf4Zc81LQzFhKwj8SueT87M6EBzEddUFHjNQcyKLjHoPJtwK9SRrPU8EZz1sGUXGSeY2tMcTPtaz",
+      "user": "88VenAxGKWv4AYRn6Ryxd541ppriFwEhwQNJMERST9iF6M5AB3W2U33Bini86cfkNxPVRdwnMWFCyM6q79EN7RZwCqQGmKa",
       "pass": "x",
       "tls": true
     }
